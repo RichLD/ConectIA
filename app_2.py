@@ -100,4 +100,6 @@ if st.button("🚀 ESTIMAR MINUTOS DE RETRASO", use_container_width=True):
                     model="gpt-3.5-turbo", 
                     messages=[{"role": "user", "content": full_query}]
                 )
-                st.info(f"💡 **ConectIA dice:** {response.choices[0].message
+                st.info(f"💡 **ConectIA dice:** {response.choices[0].message.content}")
+            except:
+                st.info("💡 **ConectIA dice:** Recuerda llegar con tiempo al aeropuerto para evitar contratiempos.")
