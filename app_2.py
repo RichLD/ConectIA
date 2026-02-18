@@ -59,20 +59,18 @@ st.markdown("Analiza tu vuelo y chatea con nuestra IA en una sola pantalla.")
 
 col_form, col_chat = st.columns([1, 1], gap="large")
 
-# --- COLUMNA IZQUIERDA: FORMULARIO ---
 with col_form:
-    st.subheader("📊 Datos del Viaje")
+    st.subheader("📊 Configuración del Vuelo")
     with st.container(border=True):
-        origen = st.selectbox("📍 Origen", aeropuertos)
-        destino = st.selectbox("🏁 Destino", aeropuertos, index=1)
+        origen = st.selectbox("📍 ¿De dónde sales?", aeropuertos)
+        destino = st.selectbox("🏁 ¿A dónde vas?", aeropuertos, index=1)
         
-        # 1. VALIDACIÓN: Mismo aeropuerto
-        error_mismo_lugar = origen == destino
-        if error_mismo_lugar:
-            st.error("⚠️ El origen y el destino no pueden ser iguales.")
+        # Validación 1: No viajar al mismo aeropuerto
+        mismo_aeropuerto = origen == destino
+        if mismo_aeropuerto:
+            st.error("⚠️ El origen y el destino no pueden ser el mismo.")
 
-        # 2. LÓGICA DE RUTAS (Filtro de Aerolíneas)
-        # Definimos si es internacional basándonos en los aeropuertos seleccionados
+        # Validación 2: Filtro de aerolíneas por ruta
         es_usa = "JFK" in origen or "JFK" in destino
         es_europa = "MAD" in origen or "MAD" in destino
         
@@ -82,90 +80,98 @@ with col_form:
             opciones_aero = rutas_operativas["Internacional (USA)"]
         else:
             opciones_aero = rutas_operativas["Nacional (México)"]
-            # Aquí se excluye American Airlines automáticamente al usar la lista nacional
 
         aerolinea = st.selectbox("🏢 Aerolínea disponible", opciones_aero)
-        fecha = st.date_input("📅 Fecha", value=date.today())
+        fecha = st.date_input("📅 Fecha de salida", value=date.today())
         hora = st.slider("🕒 Hora de salida", 0, 23, 12)
         
-        # Deshabilitar botón si el origen y destino son iguales
+        # Botón habilitado solo si la ruta es válida
         btn_analizar = st.button(
-            "🚀 REALIZAR ANÁLISIS", 
+            "🚀 ANALIZAR RETRASO", 
             use_container_width=True, 
-            disabled=error_mismo_lugar
+            disabled=mismo_aeropuerto
         )
+
     if btn_analizar:
         if modelo_reg:
-            with st.spinner('Analizando variables climáticas y operativas...'):
+            with st.spinner('Analizando condiciones en tiempo real...'):
                 clima = obtener_clima_real(origen, fecha)
                 repu = reputacion_dict.get(aerolinea, 0.80)
                 
-                # Features para el modelo
-                features = [1 if 6 <= hora <= 18 else 0, repu, 25, clima['vis'], int(hora), clima['temp'], clima['wind'], int(fecha.weekday()), clima['precip']]
+                # Features: [fase_dia, reputation, flights, visibility, Hora, temp, wind, dia_semana, precip]
+                features = [
+                    1 if 6 <= hora <= 18 else 0, 
+                    repu, 25, clima['vis'], int(hora), 
+                    clima['temp'], clima['wind'], int(fecha.weekday()), clima['precip']
+                ]
                 
-                # Predicción y ajuste
+                # Predicción y ajuste de escala (Sensibilidad)
                 datos_array = np.array([features], dtype=float)
                 pred_raw = modelo_reg.predict(datos_array)[0]
-                minutos = pred_raw * 10 if (clima['precip'] > 3 or clima['vis'] < 8) and pred_raw < 10 else pred_raw
+                
+                # Compensación para el modelo de 30 días
+                minutos = pred_raw
+                if (clima['precip'] > 3 or clima['vis'] < 8) and minutos < 10:
+                    minutos = minutos * 10
+                
                 minutos_final = int(max(0, round(minutos)))
 
                 st.session_state.resultado_final = {
-                    'minutos': minutos_final, 'aero': aerolinea, 'clima': clima,
-                    'ruta': f"{origen} ➔ {destino}"
+                    'minutos': minutos_final, 'aero': aerolinea, 
+                    'clima': clima, 'ruta': f"{origen} a {destino}"
                 }
 
-    # Despliegue de Resultados debajo del formulario
+    # Resultados del Análisis
     if st.session_state.resultado_final:
         res = st.session_state.resultado_final
         st.markdown("---")
-        st.write("### 🛡️ Resultado del Análisis")
+        st.write("### 🛡️ Diagnóstico de Vuelo")
         c1, c2 = st.columns(2)
         c1.metric("Retraso Estimado", f"{res['minutos']} min")
-        c2.metric("Temp. Detectada", f"{res['clima']['temp']} °C")
+        c2.metric("Clima Detectado", f"{res['clima']['temp']}°C")
         
         if res['minutos'] > 30:
-            st.error(f"Se prevé una demora significativa con {res['aero']}.")
+            st.error(f"Se prevé un retraso considerable con {res['aero']}.")
         else:
-            st.success(f"Condiciones óptimas para la ruta {res['ruta']}.")
+            st.success(f"Todo indica que el vuelo de {res['ruta']} será puntual.")
 
-# --- COLUMNA DERECHA: CHAT IA ---
+# --- COLUMNA DERECHA: CHAT CONECTIA ---
 with col_chat:
-    st.subheader("🤖 Chat con ConectIA")
+    st.subheader("🤖 Asistente ConectIA")
     
-    # Contenedor para los mensajes (con altura fija para scroll)
-    chat_container = st.container(height=500, border=True)
+    # Altura fija para mantener el formulario siempre a la vista
+    chat_box = st.container(height=520, border=True)
     
-    with chat_container:
+    with chat_box:
         if not st.session_state.messages:
-            st.write("¡Hola! Soy ConectIA. Ingresa los datos de tu vuelo a la izquierda para empezar o pregúntame lo que quieras.")
+            st.info("¡Hola! Soy ConectIA. Analiza tu vuelo a la izquierda y te daré consejos personalizados.")
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Escribe tu duda aquí..."):
+    if prompt := st.chat_input("Pregúntame sobre el clima o tu retraso..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with chat_container:
+        with chat_box:
             with st.chat_message("user"):
                 st.markdown(prompt)
             with st.chat_message("assistant"):
-                # Incluir el contexto del análisis si existe
+                # Contexto dinámico
                 ctx = ""
                 if st.session_state.resultado_final:
                     r = st.session_state.resultado_final
-                    ctx = f" El usuario analizó un vuelo de {r['aero']} con {r['minutos']} min de retraso."
+                    ctx = f" El usuario analizó un vuelo de {r['aero']} con {r['minutos']} min de retraso por clima de {r['clima']['temp']} grados."
                 
                 try:
-                    full_query = f"Eres ConectIA, amable y servicial.{ctx} Responde: {prompt}"
+                    full_query = f"Eres ConectIA, un asistente de viajes amable y servicial.{ctx} Responde: {prompt}"
                     response = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": full_query}])
-                    respuesta = response.choices[0].message.content
-                    st.markdown(respuesta)
-                    st.session_state.messages.append({"role": "assistant", "content": respuesta})
+                    st.markdown(response.choices[0].message.content)
+                    st.session_state.messages.append({"role": "assistant", "content": response.choices[0].message.content})
                 except:
-                    st.error("Error de conexión.")
+                    st.error("Error al conectar con la IA.")
         st.rerun()
 
 st.markdown("---")
-st.caption("ConectIA v2.0 | Sistema Unificado de Predicción y Asistencia")
+st.caption("ConectIA v2.5 | Seguridad y Puntualidad en tus Manos")
 
 
 
