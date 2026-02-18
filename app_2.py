@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="ConectIA - Hub de Viajes",
+    page_title="ConectIA - Centro de Mando",
     page_icon="✈️",
     layout="wide"
 )
@@ -33,8 +33,18 @@ def cargar_modelo():
 
 modelo_reg = cargar_modelo()
 
-# --- 3. DICCIONARIOS ---
-reputacion_dict = {"Aeroméxico": 0.88, "Volaris": 0.75, "VivaAerobus": 0.72, "Iberia": 0.92, "American Airlines": 0.85}
+# --- 3. DICCIONARIOS Y LOGÍSTICA ---
+reputacion_dict = {
+    "Aeroméxico": 0.88, "Volaris": 0.75, "VivaAerobus": 0.72, 
+    "Iberia": 0.92, "American Airlines": 0.85
+}
+
+rutas_operativas = {
+    "Nacional (México)": ["Aeroméxico", "Volaris", "VivaAerobus"],
+    "Internacional (USA)": ["Aeroméxico", "Volaris", "American Airlines"],
+    "Transatlántico (Europa)": ["Aeroméxico", "Iberia"]
+}
+
 aeropuertos = ["MEX (CDMX)", "TIJ (Tijuana)", "CUN (Cancún)", "MTY (Monterrey)", "GDL (Guadalajara)", "JFK (Nueva York)", "MAD (Madrid)"]
 
 if 'messages' not in st.session_state:
@@ -42,7 +52,7 @@ if 'messages' not in st.session_state:
 if 'resultado_final' not in st.session_state:
     st.session_state.resultado_final = None
 
-# --- 4. FUNCIÓN CLIMA ---
+# --- 4. FUNCIÓN CLIMA REAL ---
 def obtener_clima_real(ciudad, fecha_viaje):
     ciudad_query = ciudad.split(" ")[0].replace("(", "").strip()
     fecha_str = fecha_viaje.strftime('%Y-%m-%d')
@@ -50,15 +60,22 @@ def obtener_clima_real(ciudad, fecha_viaje):
     try:
         res = requests.get(url, timeout=10).json()
         dia = res['days'][0]
-        return {'temp': dia.get('temp', 22.0), 'precip': dia.get('precip', 0.0), 'wind': dia.get('windspeed', 12.0), 'vis': dia.get('visibility', 10.0)}
-    except: return {'temp': 22.0, 'precip': 0.0, 'wind': 12.0, 'vis': 10.0}
+        return {
+            'temp': dia.get('temp', 22.0), 
+            'precip': dia.get('precip', 0.0), 
+            'wind': dia.get('windspeed', 12.0), 
+            'vis': dia.get('visibility', 10.0)
+        }
+    except: 
+        return {'temp': 22.0, 'precip': 0.0, 'wind': 12.0, 'vis': 15.0}
 
-# --- 5. ESTRUCTURA DE PÁGINA ÚNICA ---
-st.title("✈️ ConectIA: Centro de Mando de Vuelos")
-st.markdown("Analiza tu vuelo y chatea con nuestra IA en una sola pantalla.")
+# --- 5. INTERFAZ UNIFICADA ---
+st.title("✈️ ConectIA: Simulador de Vuelos Inteligente")
+st.markdown("---")
 
 col_form, col_chat = st.columns([1, 1], gap="large")
 
+# --- COLUMNA IZQUIERDA: FORMULARIO ---
 with col_form:
     st.subheader("📊 Configuración del Vuelo")
     with st.container(border=True):
@@ -172,6 +189,5 @@ with col_chat:
 
 st.markdown("---")
 st.caption("ConectIA v2.5 | Seguridad y Puntualidad en tus Manos")
-
 
 
