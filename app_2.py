@@ -66,16 +66,34 @@ with col_form:
         origen = st.selectbox("📍 Origen", aeropuertos)
         destino = st.selectbox("🏁 Destino", aeropuertos, index=1)
         
-        # VALIDACIÓN: Evitar mismo aeropuerto
-        if origen == destino:
-            st.error("⚠️ El aeropuerto de destino no puede ser el mismo que el de origen.")
-            btn_analizar = st.button("🚀 REALIZAR ANÁLISIS", use_container_width=True, disabled=True)
+        # 1. VALIDACIÓN: Mismo aeropuerto
+        error_mismo_lugar = origen == destino
+        if error_mismo_lugar:
+            st.error("⚠️ El origen y el destino no pueden ser iguales.")
+
+        # 2. LÓGICA DE RUTAS (Filtro de Aerolíneas)
+        # Definimos si es internacional basándonos en los aeropuertos seleccionados
+        es_usa = "JFK" in origen or "JFK" in destino
+        es_europa = "MAD" in origen or "MAD" in destino
+        
+        if es_europa:
+            opciones_aero = rutas_operativas["Transatlántico (Europa)"]
+        elif es_usa:
+            opciones_aero = rutas_operativas["Internacional (USA)"]
         else:
-            btn_analizar = st.button("🚀 REALIZAR ANÁLISIS", use_container_width=True)
-            
-        aerolinea = st.selectbox("🏢 Aerolínea", list(reputacion_dict.keys()))
+            opciones_aero = rutas_operativas["Nacional (México)"]
+            # Aquí se excluye American Airlines automáticamente al usar la lista nacional
+
+        aerolinea = st.selectbox("🏢 Aerolínea disponible", opciones_aero)
         fecha = st.date_input("📅 Fecha", value=date.today())
         hora = st.slider("🕒 Hora de salida", 0, 23, 12)
+        
+        # Deshabilitar botón si el origen y destino son iguales
+        btn_analizar = st.button(
+            "🚀 REALIZAR ANÁLISIS", 
+            use_container_width=True, 
+            disabled=error_mismo_lugar
+        )
     if btn_analizar:
         if modelo_reg:
             with st.spinner('Analizando variables climáticas y operativas...'):
@@ -148,4 +166,5 @@ with col_chat:
 
 st.markdown("---")
 st.caption("ConectIA v2.0 | Sistema Unificado de Predicción y Asistencia")
+
 
