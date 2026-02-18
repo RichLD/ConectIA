@@ -174,7 +174,23 @@ with col_chat:
 
     with chat_box:
         if not st.session_state.get("messages"):
-            st.info("¡Hola! Soy ConectIA ✈️ Analiza tu vuelo a la izquierda y te ayudaré a minimizar impactos.")
+            st.info("""
+👋 **Bienvenido a ConectIA**
+
+Soy tu asistente inteligente de vuelos ✈️  
+
+🔎 Analizo el retraso de tu vuelo  
+⚠️ Evalúo el nivel de impacto en tu logística  
+✅ Te doy acciones concretas para minimizar problemas  
+
+Puedes preguntarme cosas como:
+- ¿Voy a perder mi conexión?
+- ¿Debo cambiar mi transporte?
+- ¿Aplica compensación?
+- ¿Qué hago si el retraso aumenta?
+
+Analiza tu vuelo a la izquierda y luego hazme tu pregunta aquí 👇
+""")
 
         for msg in st.session_state.get("messages", []):
             with st.chat_message(msg["role"]):
@@ -293,4 +309,5 @@ Responde SIEMPRE en formato JSON con esta estructura:
                     st.exception(e)
 
         st.rerun()
+
 
