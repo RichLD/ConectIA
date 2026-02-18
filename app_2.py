@@ -167,24 +167,15 @@ with col_form:
             st.success(f"Vuelo puntual detectado para {res['ruta']}.")
 
 # --- COLUMNA DERECHA: CHAT CONECTIA ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+with col2:
 
-if "resultado_final" not in st.session_state:
-    st.session_state.resultado_final = None  # Aquí guardas info del vuelo desde tu análisis lateral
-
-# -------------------------------
-# BLOQUE CHAT CONECTIA
-# -------------------------------
-
-with st.container():
     st.subheader("🤖 Chat ConectIA")
 
-    chat_box = st.container(height=550, border=True)
+    chat_box = st.container(border=True)
 
     with chat_box:
         if not st.session_state.messages:
-            st.info("¡Hola! Soy ConectIA ✈️ Analiza tu vuelo a la izquierda y aquí podré darte consejos personalizados para minimizar impactos en tu viaje.")
+            st.info("Hola ✈️ Soy ConectIA. Analiza tu vuelo y te ayudaré a minimizar impactos.")
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
@@ -192,7 +183,6 @@ with st.container():
 
     if prompt := st.chat_input("Escribe tu duda sobre tu vuelo..."):
 
-        # Guardar mensaje usuario
         st.session_state.messages.append({
             "role": "user",
             "content": prompt
@@ -204,15 +194,14 @@ with st.container():
 
             with st.chat_message("assistant"):
 
-                # -------------------------------
-                # CONTEXTO DEL VUELO
-                # -------------------------------
+                r = st.session_state.get("resultado_final", None)
+
                 ctx = ""
-                if st.session_state.resultado_final:
-                    r = st.session_state.resultado_final
+                impacto = "No determinado"
+
+                if r:
                     minutos = r.get("minutos", 0)
 
-                    # Clasificación automática de impacto
                     if minutos <= 15:
                         impacto = "Bajo"
                     elif minutos <= 45:
@@ -229,83 +218,48 @@ Contexto del vuelo:
 - Nivel estimado de impacto: {impacto}
 """
 
-                # -------------------------------
-                # PROMPT SISTEMA
-                # -------------------------------
                 system_prompt = """
-Eres ConectIA, un asistente experto en vuelos y logística de pasajeros.
+Eres ConectIA, asistente experto en vuelos y logística de pasajeros.
 
-Tu función es:
-1. Analizar retrasos de vuelo.
-2. Evaluar impacto logístico.
-3. Dar recomendaciones concretas para minimizar efectos colaterales.
-4. Sugerir acciones prácticas relacionadas con:
-   - Conexiones
-   - Transporte terrestre
-   - Reuniones o compromisos
-   - Hoteles
-   - Compensaciones
-   - Seguros
-   - Equipaje
-
-Responde SIEMPRE en formato JSON con esta estructura exacta:
+Responde SIEMPRE en formato JSON con esta estructura:
 
 {
-  "diagnostico": "Breve análisis del estado del vuelo",
-  "nivel_impacto": "Bajo | Moderado | Alto | Crítico",
-  "acciones_recomendadas": [
-    "Acción 1",
-    "Acción 2",
-    "Acción 3"
-  ],
-  "consejo_adicional": "Consejo inteligente adicional"
+  "diagnostico": "",
+  "nivel_impacto": "",
+  "acciones_recomendadas": [],
+  "consejo_adicional": ""
 }
-
-Sé claro, profesional y orientado a minimizar impacto logístico.
 """
 
-                user_prompt = f"""
-{ctx}
+                user_prompt = f"{ctx}\nPregunta del pasajero:\n{prompt}"
 
-Pregunta del pasajero:
-{prompt}
-"""
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    temperature=0.4,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                )
 
-                try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        temperature=0.4,
-                        response_format={"type": "json_object"},
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ]
-                    )
+                import json
+                data = json.loads(response.choices[0].message.content)
 
-                    content = response.choices[0].message.content
+                st.markdown("### 📊 Diagnóstico")
+                st.write(data["diagnostico"])
 
-                    import json
-                    data = json.loads(content)
+                st.markdown("### ⚠️ Nivel de Impacto")
+                st.write(data["nivel_impacto"])
 
-                    # -------------------------------
-                    # RENDER BONITO EN STREAMLIT
-                    # -------------------------------
+                st.markdown("### ✅ Acciones Recomendadas")
+                for accion in data["acciones_recomendadas"]:
+                    st.write(f"- {accion}")
 
-                    st.markdown(f"### 📊 Diagnóstico")
-                    st.write(data["diagnostico"])
+                st.markdown("### 💡 Consejo Adicional")
+                st.write(data["consejo_adicional"])
 
-                    st.markdown(f"### ⚠️ Nivel de Impacto")
-                    st.write(data["nivel_impacto"])
-
-                    st.markdown("### ✅ Acciones Recomendadas")
-                    for accion in data["acciones_recomendadas"]:
-                        st.write(f"- {accion}")
-
-                    st.markdown("### 💡 Consejo Adicional")
-                    st.write(data["consejo_adicional"])
-
-                    # Guardar respuesta formateada en memoria
-                    formatted_response = f"""
+                formatted_response = f"""
 📊 **Diagnóstico:**  
 {data["diagnostico"]}
 
@@ -319,13 +273,9 @@ Pregunta del pasajero:
 {data["consejo_adicional"]}
 """
 
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": formatted_response
-                    })
-
-                except Exception as e:
-                    st.error("Error al conectar con ConectIA.")
-                    st.exception(e)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": formatted_response
+                })
 
         st.rerun()
