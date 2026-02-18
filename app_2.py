@@ -65,12 +65,17 @@ with col_form:
     with st.container(border=True):
         origen = st.selectbox("📍 Origen", aeropuertos)
         destino = st.selectbox("🏁 Destino", aeropuertos, index=1)
+        
+        # VALIDACIÓN: Evitar mismo aeropuerto
+        if origen == destino:
+            st.error("⚠️ El aeropuerto de destino no puede ser el mismo que el de origen.")
+            btn_analizar = st.button("🚀 REALIZAR ANÁLISIS", use_container_width=True, disabled=True)
+        else:
+            btn_analizar = st.button("🚀 REALIZAR ANÁLISIS", use_container_width=True)
+            
         aerolinea = st.selectbox("🏢 Aerolínea", list(reputacion_dict.keys()))
         fecha = st.date_input("📅 Fecha", value=date.today())
         hora = st.slider("🕒 Hora de salida", 0, 23, 12)
-        
-        btn_analizar = st.button("🚀 REALIZAR ANÁLISIS", use_container_width=True)
-
     if btn_analizar:
         if modelo_reg:
             with st.spinner('Analizando variables climáticas y operativas...'):
@@ -143,3 +148,4 @@ with col_chat:
 
 st.markdown("---")
 st.caption("ConectIA v2.0 | Sistema Unificado de Predicción y Asistencia")
+
