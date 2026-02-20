@@ -35,7 +35,7 @@ modelo_reg = cargar_modelo()
 
 # --- 3. DICCIONARIOS Y LOGÍSTICA ---
 reputacion_dict = {
-    "Aeroméxico": 0.88, "Volaris": 0.75, "VivaAerobus": 0.72, 
+    "Aeroméxico": 0.88, "Volaris": 0.75, "VivaAerobus": 0.70, 
     "Iberia": 0.92, "American Airlines": 0.85
 }
 
@@ -63,12 +63,12 @@ def obtener_clima_real(ciudad, fecha_viaje):
         return {
             'temp': dia.get('temp', 22.0), 
             'precip': dia.get('precip', 0.0), 
-            'wind': dia.get('windspeed', 12.0), 
+            'wind': dia.get('windspeed', 15.0), 
             'vis': dia.get('visibility', 10.0),
             'status': 'ok'
         }
     except: 
-        return {'temp': 22.0, 'precip': 0.0, 'wind': 12.0, 'vis': 15.0, 'status': 'error'}
+        return {'temp': 22.0, 'precip': 0.0, 'wind': 15.0, 'vis': 10.0, 'status': 'error'}
 
 # --- 5. INTERFAZ UNIFICADA ---
 st.title("✈️ ConectIA: Simulador de Vuelos Inteligente")
@@ -311,5 +311,6 @@ Responde SIEMPRE en formato JSON con esta estructura:
         st.rerun()
 
 #FINAL
+
 
 
